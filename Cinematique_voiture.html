@@ -561,7 +561,7 @@ function animTick(now) {
   if (state.lastTime === null) state.lastTime = now;
   const dt = (now - state.lastTime) / 1000;
   state.lastTime = now;
-  const step = Math.max(1, Math.round(state.speed * dt / DT * 0.5));
+  const step = Math.max(1, Math.round(state.speed * dt / DT * 0.1));
   state.idx = Math.min(state.idx + step, N-1);
   document.getElementById('tSlider').value = T_ARR[state.idx];
   drawAll(state.idx);
