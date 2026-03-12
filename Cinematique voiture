@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinématique 1D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #eef1f8;
+    --panel:   #ffffff;
+    --border:  #c8cfe0;
+    --blue:    #3a5fd9;
+    --yellow:  #c47a00;
+    --green:   #0a8f60;
+    --orange:  #c45500;
+    --gray:    #99a3be;
+    --lgray:   #4a5272;
+    --dark:    #111830;
+    --road:    #d0d5e8;
+    --dashes:  #aab0cc;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Mono', monospace;
+    color: var(--dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 12px 24px;
+    gap: 14px;
+  }
+
+  header {
+    text-align: center;
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--dark);
+    letter-spacing: -0.5px;
+  }
+  #fn-expr {
+    font-size: 13px;
+    color: var(--blue);
+    font-style: italic;
+    margin-top: 3px;
+    min-height: 18px;
+  }
+
+  .main-wrap {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: flex-start;
+  }
+
+  /* ── Panneau gauche : route + graphes ── */
+  .left-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .canvas-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .canvas-box canvas { display: block; width: 100%; }
+
+  .graph-label {
+    font-size: 10px;
+    color: var(--lgray);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 12px 2px;
+  }
+
+  /* ── Panneau droite : contrôles ── */
+  .right-panel {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ctrl-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .ctrl-box h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--lgray);
+    margin-bottom: 10px;
+  }
+
+  /* Radio buttons */
+  .fn-list { display: flex; flex-direction: column; gap: 6px; }
+  .fn-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--lgray);
+    cursor: pointer;
+    text-align: left;
+    transition: all .15s;
+  }
+  .fn-btn:hover { border-color: var(--blue); color: var(--dark); }
+  .fn-btn.active {
+    background: #e8edf8;
+    border-color: var(--blue);
+    color: var(--blue);
+    font-weight: 500;
+  }
+  .fn-expr-small { font-size: 9px; color: var(--gray); display: block; margin-top: 2px; font-style: italic; }
+
+  /* Sliders */
+  .slider-row { margin-bottom: 10px; }
+  .slider-row label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--lgray);
+    margin-bottom: 4px;
+  }
+  .slider-row label span { color: var(--dark); font-weight: 500; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--border);
+    outline: none;
+  }
+  input[type=range].blue::-webkit-slider-thumb  { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--blue); cursor:pointer; }
+  input[type=range].amber::-webkit-slider-thumb { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--yellow); cursor:pointer; }
+
+  /* Boutons */
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-play  { background: var(--blue);  color: #fff; }
+  .btn-play:hover  { background: #2e4fbb; }
+  .btn-reset { background: #dde2f0; color: var(--dark); }
+  .btn-reset:hover { background: #c8cfe0; }
+
+  /* Infos */
+  .info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 8px;
+    font-size: 11px;
+  }
+  .info-key   { color: var(--lgray); }
+  .info-val   { color: var(--dark); font-weight: 500; text-align: right; }
+  .info-val.blue   { color: var(--blue); }
+  .info-val.green  { color: var(--green); }
+  .info-val.orange { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cinématique 1D</h1>
+  <div id="fn-expr">x(t) = 1.5t − 9</div>
+</header>
+
+<div class="main-wrap">
+  <!-- Gauche -->
+  <div class="left-panel">
+    <div class="canvas-box">
+      <canvas id="cvRoad" height="140"></canvas>
+    </div>
+    <div class="canvas-box">
+      <div class="graph-label" style="color:var(--blue)">x(t) — position (m)</div>
+      <canvas id="cvPos" height="120"></canvas>
+    </div>
+    <div class="canvas-box">
+      <div class="graph-label" style="color:var(--green)">v(t) — vitesse (m/s)</div>
+      <canvas id="cvVel" height="120"></canvas>
+    </div>
+    <div class="canvas-box">
+      <div class="graph-label" style="color:var(--orange)">a(t) — accélération (m/s²)</div>
+      <canvas id="cvAcc" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- Droite -->
+  <div class="right-panel">
+    <div class="ctrl-box">
+      <h3>Fonction</h3>
+      <div class="fn-list" id="fnList"></div>
+    </div>
+
+    <div class="ctrl-box">
+      <h3>Contrôles</h3>
+      <div class="slider-row">
+        <label>Vitesse animation <span id="speedVal">1.0×</span></label>
+        <input type="range" class="blue" id="speedSlider" min="0.2" max="4" step="0.1" value="1">
+      </div>
+      <div class="slider-row">
+        <label>t (s) <span id="tVal">0.00</span></label>
+        <input type="range" class="amber" id="tSlider" min="0" max="12" step="0.05" value="0">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-play"  id="btnPlay">▶ Play</button>
+        <button class="btn btn-reset" id="btnReset">⏮ Reset</button>
+      </div>
+    </div>
+
+    <div class="ctrl-box">
+      <h3>Valeurs</h3>
+      <div class="info-grid">
+        <span class="info-key">t</span>  <span class="info-val" id="iv-t">0.00 s</span>
+        <span class="info-key">x</span>  <span class="info-val blue"   id="iv-x">0.00 m</span>
+        <span class="info-key">v</span>  <span class="info-val green"  id="iv-v">0.00 m/s</span>
+        <span class="info-key">a</span>  <span class="info-val orange" id="iv-a">0.00 m/s²</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Fonctions ──────────────────────────────────────────────────────────────────
+const FUNCTIONS = {
+  "Mouvement uniforme":    { fn: t => 1.5*t - 9,                              expr: "x(t) = 1.5t − 9" },
+  "Accélération uniforme": { fn: t => 0.5*t*t - 9,                            expr: "x(t) = ½t² − 9" },
+  "Sinusoïde amortie":     { fn: t => 7*Math.exp(-0.3*t)*Math.sin(1.5*t),     expr: "x(t) = 7·e^(−0.3t)·sin(1.5t)" },
+  "Aller-retour":          { fn: t => 5*Math.sin(0.8*t) + 2*Math.sin(2*t),    expr: "x(t) = 5·sin(0.8t) + 2·sin(2t)" },
+};
+
+const T_MAX = 12, DT = 0.05;
+const X_LIM = [-9, 9];
+const T_ARR = [];
+for (let t = 0; t <= T_MAX + DT/2; t += DT) T_ARR.push(+t.toFixed(4));
+const N = T_ARR.length;
+
+function deriv(f, t, h=1e-4)  { return (f(t+h) - f(t-h)) / (2*h); }
+function deriv2(f, t, h=1e-4) { return (f(t+h) - 2*f(t) + f(t-h)) / (h*h); }
+function clamp(v,a,b) { return Math.max(a, Math.min(b, v)); }
+
+// ── Couleurs ───────────────────────────────────────────────────────────────────
+const C = {
+  bg: '#eef1f8', panel: '#ffffff', border: '#c8cfe0',
+  blue: '#3a5fd9', yellow: '#c47a00', green: '#0a8f60',
+  orange: '#c45500', gray: '#99a3be', lgray: '#4a5272',
+  road: '#d0d5e8', dashes: '#aab0cc',
+};
+
+// ── Cache ──────────────────────────────────────────────────────────────────────
+let cache = { xs: [], vs: [], acs: [], fn: null };
+let currentFn = "Mouvement uniforme";
+
+function loadFunction(name) {
+  currentFn = name;
+  const f = FUNCTIONS[name].fn;
+  const xs_raw = T_ARR.map(f);
+  const xs  = xs_raw.map(x => clamp(x, X_LIM[0], X_LIM[1]));
+  const vs  = T_ARR.map(t => deriv(f, t));
+  const acs = T_ARR.map(t => deriv2(f, t));
+  const atBorder = xs_raw.map(x => x <= X_LIM[0] || x >= X_LIM[1]);
+  const vs_vis  = vs.map((v,i)  => atBorder[i] ? 0 : v);
+  const acs_vis = acs.map((a,i) => atBorder[i] ? 0 : a);
+  cache = { fn: f, xs, vs: vs_vis, acs: acs_vis };
+  document.getElementById('fn-expr').textContent = FUNCTIONS[name].expr;
+  drawAllBg();
+}
+
+// ── Canvas setup ───────────────────────────────────────────────────────────────
+function resizeCanvas(cv) {
+  cv.width  = cv.offsetWidth  * devicePixelRatio;
+  cv.height = cv.offsetHeight * devicePixelRatio;
+}
+
+const cvRoad = document.getElementById('cvRoad');
+const cvPos  = document.getElementById('cvPos');
+const cvVel  = document.getElementById('cvVel');
+const cvAcc  = document.getElementById('cvAcc');
+
+window.addEventListener('resize', () => {
+  [cvRoad, cvPos, cvVel, cvAcc].forEach(resizeCanvas);
+  drawAll(state.idx);
+});
+
+// ── Draw route ─────────────────────────────────────────────────────────────────
+function drawRoad(idx) {
+  resizeCanvas(cvRoad);
+  const ctx = cvRoad.getContext('2d');
+  const W = cvRoad.width, H = cvRoad.height;
+  const dpr = devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+
+  const PAD = 50*dpr, roadH = 36*dpr;
+  const roadY = H*0.52, roadLeft = PAD, roadRight = W - PAD;
+  const roadLen = roadRight - roadLeft;
+
+  // Fond
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0,0,W,H);
+
+  // Route
+  ctx.fillStyle = C.road;
+  ctx.beginPath();
+  ctx.roundRect(roadLeft - 8*dpr, roadY - roadH/2, roadLen + 16*dpr, roadH, 5*dpr);
+  ctx.fill();
+  ctx.strokeStyle = C.border; ctx.lineWidth = dpr;
+  ctx.stroke();
+
+  // Tirets
+  ctx.strokeStyle = C.dashes; ctx.lineWidth = 2*dpr;
+  for (let x = roadLeft + 8*dpr; x < roadRight - 8*dpr; x += 22*dpr) {
+    ctx.beginPath(); ctx.moveTo(x, roadY); ctx.lineTo(x + 12*dpr, roadY); ctx.stroke();
+  }
+
+  // Axe
+  const axY = roadY - roadH/2 - 8*dpr;
+  ctx.strokeStyle = C.gray; ctx.lineWidth = dpr;
+  ctx.beginPath(); ctx.moveTo(roadLeft, axY); ctx.lineTo(roadRight, axY); ctx.stroke();
+  // Flèche axe
+  ctx.fillStyle = C.lgray;
+  ctx.beginPath(); ctx.moveTo(roadRight+10*dpr, axY);
+  ctx.lineTo(roadRight+2*dpr, axY-4*dpr); ctx.lineTo(roadRight+2*dpr, axY+4*dpr); ctx.fill();
+  ctx.font = `${11*dpr}px DM Mono`; ctx.fillStyle = C.lgray; ctx.textAlign='left';
+  ctx.fillText('x', roadRight+13*dpr, axY+4*dpr);
+
+  // Graduations
+  const xToPx = xv => roadLeft + (xv - X_LIM[0]) / (X_LIM[1]-X_LIM[0]) * roadLen;
+  ctx.font = `${9*dpr}px DM Mono`; ctx.textAlign='center'; ctx.fillStyle=C.lgray;
+  for (let v = -8; v <= 8; v += 2) {
+    const px = xToPx(v);
+    ctx.strokeStyle = C.gray; ctx.lineWidth = dpr;
+    ctx.beginPath(); ctx.moveTo(px, axY-4*dpr); ctx.lineTo(px, axY+4*dpr); ctx.stroke();
+    ctx.fillText(v, px, axY-7*dpr);
+  }
+  // Origine
+  ctx.strokeStyle = C.blue; ctx.lineWidth = 1.2*dpr; ctx.setLineDash([3*dpr,2*dpr]);
+  ctx.beginPath(); ctx.moveTo(xToPx(0), axY-2*dpr); ctx.lineTo(xToPx(0), axY+8*dpr); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Voiture ──
+  const t_  = T_ARR[idx];
+  const x_  = cache.xs[idx];
+  const v_  = cache.vs[idx];
+  const carPx = xToPx(x_);
+  const carY  = roadY;
+  const sc = dpr;
+
+  // Projection
+  ctx.strokeStyle = C.yellow; ctx.lineWidth = 1.5*dpr; ctx.setLineDash([3*dpr,3*dpr]); ctx.globalAlpha=0.7;
+  ctx.beginPath(); ctx.moveTo(carPx, carY - roadH/2 - 4*dpr); ctx.lineTo(carPx, carY + 2*dpr); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+
+  // Carrosserie
+  ctx.save(); ctx.translate(carPx, carY);
+  ctx.fillStyle = '#2563eb';
+  ctx.beginPath(); ctx.roundRect(-22*sc, -14*sc, 44*sc, 22*sc, 5*sc); ctx.fill();
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=1.5*sc; ctx.stroke();
+  // Toit
+  ctx.fillStyle='#3b82f6';
+  ctx.beginPath(); ctx.roundRect(-14*sc, -26*sc, 28*sc, 16*sc, 5*sc); ctx.fill();
+  ctx.strokeStyle='#2563eb'; ctx.lineWidth=sc; ctx.stroke();
+  // Roues
+  for (const wx of [-13*sc, 13*sc]) {
+    ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(wx, 9*sc, 7*sc, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#374151'; ctx.beginPath(); ctx.arc(wx, 9*sc, 3*sc, 0, Math.PI*2); ctx.fill();
+  }
+  // Phare droit
+  ctx.fillStyle='#fef08a'; ctx.globalAlpha=0.9;
+  ctx.beginPath(); ctx.roundRect(18*sc, -8*sc, 5*sc, 7*sc, 2*sc); ctx.fill();
+  // Feu arrière
+  ctx.fillStyle='#f87171';
+  ctx.beginPath(); ctx.roundRect(-23*sc, -8*sc, 5*sc, 7*sc, 2*sc); ctx.fill();
+  ctx.globalAlpha=1;
+
+  // Flèche vitesse
+  if (Math.abs(v_) > 0.05) {
+    const arrowLen = clamp(v_ * 6*sc, -55*sc, 55*sc);
+    ctx.strokeStyle = C.yellow; ctx.lineWidth = 2.5*sc;
+    ctx.beginPath(); ctx.moveTo(0, -20*sc); ctx.lineTo(arrowLen, -20*sc); ctx.stroke();
+    // Pointe
+    const dir = arrowLen > 0 ? 1 : -1;
+    ctx.fillStyle = C.yellow;
+    ctx.beginPath();
+    ctx.moveTo(arrowLen, -20*sc);
+    ctx.lineTo(arrowLen - dir*8*sc, -24*sc);
+    ctx.lineTo(arrowLen - dir*8*sc, -16*sc);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Label x
+  ctx.font = `${9*dpr}px DM Mono`; ctx.fillStyle = C.yellow; ctx.textAlign='center';
+  const sign = x_ >= 0 ? '+' : '';
+  ctx.fillText(`x = ${sign}${x_.toFixed(2)}`, carPx, roadY + roadH/2 + 14*dpr);
+}
+
+// ── Draw graph ────────────────────────────────────────────────────────────────
+function drawGraph(cv, dataFull, dataPast, tCur, valCur, color, yLabel) {
+  resizeCanvas(cv);
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const dpr = devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle = C.panel; ctx.fillRect(0,0,W,H);
+
+  const ml=40*dpr, mr=18*dpr, mt=12*dpr, mb=28*dpr;
+  const gW = W-ml-mr, gH = H-mt-mb;
+
+  // Limites y
+  const allY = dataFull;
+  let yMin = Math.min(...allY), yMax = Math.max(...allY);
+  const margin = Math.max((yMax-yMin)*0.18, 0.8);
+  yMin -= margin; yMax += margin;
+
+  const tToPx = t  => ml + (t/T_MAX)*gW;
+  const yToPx = y  => mt + (1 - (y-yMin)/(yMax-yMin))*gH;
+
+  // Grille
+  ctx.strokeStyle = C.border; ctx.lineWidth = 0.5*dpr;
+  const nY = 4;
+  for (let i=0; i<=nY; i++) {
+    const y = yMin + i*(yMax-yMin)/nY;
+    const py = yToPx(y);
+    ctx.beginPath(); ctx.moveTo(ml,py); ctx.lineTo(ml+gW,py); ctx.stroke();
+    ctx.font = `${8*dpr}px DM Mono`; ctx.fillStyle=C.lgray; ctx.textAlign='right';
+    ctx.fillText(y.toFixed(1), ml-4*dpr, py+3*dpr);
+  }
+  for (let t=0; t<=T_MAX; t+=2) {
+    const px = tToPx(t);
+    ctx.beginPath(); ctx.moveTo(px,mt); ctx.lineTo(px,mt+gH); ctx.stroke();
+    ctx.font=`${8*dpr}px DM Mono`; ctx.fillStyle=C.lgray; ctx.textAlign='center';
+    ctx.fillText(t, px, mt+gH+14*dpr);
+  }
+
+  // Axe y=0
+  if (yMin < 0 && yMax > 0) {
+    ctx.strokeStyle=C.gray; ctx.lineWidth=0.8*dpr;
+    ctx.beginPath(); ctx.moveTo(ml,yToPx(0)); ctx.lineTo(ml+gW,yToPx(0)); ctx.stroke();
+  }
+
+  // Courbe fond
+  ctx.strokeStyle=C.border; ctx.lineWidth=1.5*dpr;
+  ctx.beginPath();
+  dataFull.forEach((y,i) => {
+    const px=tToPx(T_ARR[i]), py=yToPx(y);
+    i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+
+  // Courbe passée
+  if (dataPast.length > 1) {
+    ctx.strokeStyle=color; ctx.lineWidth=2.2*dpr;
+    ctx.beginPath();
+    dataPast.forEach((y,i) => {
+      const px=tToPx(T_ARR[i]), py=yToPx(y);
+      i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+
+  // Ligne verticale t
+  ctx.strokeStyle=C.yellow; ctx.lineWidth=dpr; ctx.setLineDash([4*dpr,3*dpr]); ctx.globalAlpha=0.5;
+  const tpx = tToPx(tCur);
+  ctx.beginPath(); ctx.moveTo(tpx,mt); ctx.lineTo(tpx,mt+gH); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+
+  // Point courant
+  const dotY = yToPx(clamp(valCur,yMin,yMax));
+  ctx.fillStyle=C.yellow; ctx.globalAlpha=0.2;
+  ctx.beginPath(); ctx.arc(tpx, dotY, 8*dpr, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.fillStyle=C.yellow;
+  ctx.beginPath(); ctx.arc(tpx, dotY, 5*dpr, 0, Math.PI*2); ctx.fill();
+
+  // Label t axe
+  ctx.font=`${8*dpr}px DM Mono`; ctx.fillStyle=C.lgray; ctx.textAlign='right';
+  ctx.fillText('t (s)', W-2*dpr, mt+gH+14*dpr);
+}
+
+// ── Draw all ───────────────────────────────────────────────────────────────────
+let bgPos=[], bgVel=[], bgAcc=[];
+function drawAllBg() {
+  bgPos = [...cache.xs];
+  bgVel = [...cache.vs];
+  bgAcc = [...cache.acs];
+}
+
+function drawAll(idx) {
+  const pastPos = cache.xs.slice(0,idx+1);
+  const pastVel = cache.vs.slice(0,idx+1);
+  const pastAcc = cache.acs.slice(0,idx+1);
+  const t_ = T_ARR[idx];
+
+  drawRoad(idx);
+  drawGraph(cvPos, bgPos, pastPos, t_, cache.xs[idx], C.blue,   'x');
+  drawGraph(cvVel, bgVel, pastVel, t_, cache.vs[idx], C.green,  'v');
+  drawGraph(cvAcc, bgAcc, pastAcc, t_, cache.acs[idx], C.orange, 'a');
+
+  // Infos
+  const fmt = (v,d=2) => (v>=0?'+':'')+v.toFixed(d);
+  document.getElementById('iv-t').textContent = t_.toFixed(2)+' s';
+  document.getElementById('iv-x').textContent = fmt(cache.xs[idx])+' m';
+  document.getElementById('iv-v').textContent = fmt(cache.vs[idx])+' m/s';
+  document.getElementById('iv-a').textContent = fmt(cache.acs[idx])+' m/s²';
+  document.getElementById('tVal').textContent  = t_.toFixed(2);
+}
+
+// ── Boutons fonction ───────────────────────────────────────────────────────────
+const fnList = document.getElementById('fnList');
+Object.entries(FUNCTIONS).forEach(([name, {expr}]) => {
+  const btn = document.createElement('button');
+  btn.className = 'fn-btn' + (name===currentFn ? ' active' : '');
+  btn.innerHTML = `${name}<span class="fn-expr-small">${expr}</span>`;
+  btn.onclick = () => {
+    document.querySelectorAll('.fn-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    stopAnim();
+    loadFunction(name);
+    state.idx = 0;
+    drawAll(0);
+    document.getElementById('tSlider').value = 0;
+  };
+  fnList.appendChild(btn);
+});
+
+// ── Animation ──────────────────────────────────────────────────────────────────
+const state = { idx: 0, playing: false, speed: 1.0, raf: null, lastTime: null };
+
+function animTick(now) {
+  if (!state.playing) return;
+  if (state.lastTime === null) state.lastTime = now;
+  const dt = (now - state.lastTime) / 1000;
+  state.lastTime = now;
+  const step = Math.max(1, Math.round(state.speed * dt / DT * 0.5));
+  state.idx = Math.min(state.idx + step, N-1);
+  document.getElementById('tSlider').value = T_ARR[state.idx];
+  drawAll(state.idx);
+  if (state.idx >= N-1) {
+    stopAnim();
+  } else {
+    state.raf = requestAnimationFrame(animTick);
+  }
+}
+
+function stopAnim() {
+  state.playing = false;
+  state.lastTime = null;
+  if (state.raf) cancelAnimationFrame(state.raf);
+  document.getElementById('btnPlay').textContent = '▶ Play';
+}
+
+document.getElementById('btnPlay').onclick = () => {
+  if (state.idx >= N-1) state.idx = 0;
+  state.playing = !state.playing;
+  if (state.playing) {
+    document.getElementById('btnPlay').textContent = '⏸ Pause';
+    state.lastTime = null;
+    state.raf = requestAnimationFrame(animTick);
+  } else {
+    stopAnim();
+  }
+};
+
+document.getElementById('btnReset').onclick = () => {
+  stopAnim();
+  state.idx = 0;
+  document.getElementById('tSlider').value = 0;
+  drawAll(0);
+};
+
+document.getElementById('speedSlider').oninput = e => {
+  state.speed = parseFloat(e.target.value);
+  document.getElementById('speedVal').textContent = state.speed.toFixed(1)+'×';
+};
+
+document.getElementById('tSlider').oninput = e => {
+  stopAnim();
+  const t = parseFloat(e.target.value);
+  state.idx = T_ARR.findIndex(tv => tv >= t - DT/2);
+  if (state.idx < 0) state.idx = N-1;
+  drawAll(state.idx);
+};
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+[cvRoad, cvPos, cvVel, cvAcc].forEach(resizeCanvas);
+loadFunction(currentFn);
+drawAll(0);
+</script>
+</body>
+</html>
