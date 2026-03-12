@@ -61,18 +61,21 @@
 </header>
 <div class="main-wrap">
   <div class="left-panel">
-    <div class="canvas-box"><canvas id="cvRoad" height="140"></canvas></div>
+    <div class="canvas-box" style="display:flex;align-items:center;">
+      <canvas id="cvChrono" width="140" height="140" style="flex-shrink:0;width:140px;height:140px;"></canvas>
+      <canvas id="cvRoad" height="140" style="flex:1;min-width:0;"></canvas>
+    </div>
     <div class="canvas-box">
       <div class="graph-label" style="color:var(--blue)">x(t) — position (m)</div>
-      <canvas id="cvPos" height="240"></canvas>
+      <canvas id="cvPos" height="120"></canvas>
     </div>
     <div class="canvas-box">
       <div class="graph-label" style="color:var(--green)">v(t) — vitesse (m/s)</div>
-      <canvas id="cvVel" height="240"></canvas>
+      <canvas id="cvVel" height="120"></canvas>
     </div>
     <div class="canvas-box">
       <div class="graph-label" style="color:var(--orange)">a(t) — accélération (m/s²)</div>
-      <canvas id="cvAcc" height="240"></canvas>
+      <canvas id="cvAcc" height="120"></canvas>
     </div>
   </div>
   <div class="right-panel">
@@ -156,6 +159,69 @@ const C = { blue:'#3a5fd9', yellow:'#c47a00', green:'#0a8f60', orange:'#c45500',
 function getW(cv) { return cv.offsetWidth * devicePixelRatio; }
 function getH(cv) { return cv.offsetHeight * devicePixelRatio; }
 function prep(cv) { cv.width = getW(cv); cv.height = getH(cv); return cv.getContext('2d'); }
+
+function drawChrono(t) {
+  const cv = document.getElementById('cvChrono');
+  const size = 140 * devicePixelRatio;
+  cv.width = size; cv.height = size;
+  const ctx = cv.getContext('2d');
+  const cx = size/2, cy = size/2, R = size*0.44;
+
+  // Fond cercle
+  ctx.fillStyle = '#1a2040';
+  ctx.beginPath(); ctx.arc(cx,cy,R+4,0,Math.PI*2); ctx.fill();
+
+  // Cadran
+  const grad = ctx.createRadialGradient(cx,cy*0.8,R*0.1,cx,cy,R);
+  grad.addColorStop(0,'#2a3560');
+  grad.addColorStop(1,'#111830');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+
+  // Bordure
+  ctx.strokeStyle = '#3a5fd9'; ctx.lineWidth = 3*devicePixelRatio;
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+
+  // Graduations
+  for (let i=0; i<60; i++) {
+    const angle = (i/60)*Math.PI*2 - Math.PI/2;
+    const isMaj = i%5===0;
+    const r1 = R*(isMaj?0.78:0.85), r2 = R*0.94;
+    ctx.strokeStyle = isMaj ? '#c8cfe0' : '#4a5272';
+    ctx.lineWidth = isMaj ? 2*devicePixelRatio : devicePixelRatio;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(angle)*r1, cy+Math.sin(angle)*r1);
+    ctx.lineTo(cx+Math.cos(angle)*r2, cy+Math.sin(angle)*r2);
+    ctx.stroke();
+  }
+
+  // Chiffres (0,3,6,9,12)
+  ctx.font = `bold ${R*0.18}px DM Mono`;
+  ctx.fillStyle = '#c8cfe0'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  [[0,'12'],[Math.PI/2,'3'],[Math.PI,'6'],[3*Math.PI/2,'9']].forEach(([a,lbl])=>{
+    const angle = a - Math.PI/2;
+    ctx.fillText(lbl, cx+Math.cos(angle)*R*0.65, cy+Math.sin(angle)*R*0.65);
+  });
+
+  // Aiguille secondes (sur 12s max → tour complet = 12s)
+  const secAngle = (t / 12) * Math.PI*2 - Math.PI/2;
+  ctx.strokeStyle = '#f7c948'; ctx.lineWidth = 2*devicePixelRatio; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(cx - Math.cos(secAngle)*R*0.12, cy - Math.sin(secAngle)*R*0.12);
+  ctx.lineTo(cx + Math.cos(secAngle)*R*0.78, cy + Math.sin(secAngle)*R*0.78);
+  ctx.stroke();
+
+  // Centre
+  ctx.fillStyle = '#3a5fd9';
+  ctx.beginPath(); ctx.arc(cx,cy,5*devicePixelRatio,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f7c948';
+  ctx.beginPath(); ctx.arc(cx,cy,3*devicePixelRatio,0,Math.PI*2); ctx.fill();
+
+  // Affichage numérique en bas
+  ctx.font = `bold ${R*0.22}px DM Mono`;
+  ctx.fillStyle = '#f7c948'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(t.toFixed(2)+' s', cx, cy + R*0.38);
+}
 
 function drawRoad(idx) {
   const ctx = prep(cvRoad);
@@ -293,6 +359,7 @@ function drawGraph(cv, color, dataAll, idx) {
 }
 
 function drawAll(idx) {
+  drawChrono(T_ARR[idx]);
   drawRoad(idx);
   drawGraph(cvPos, C.blue,   cache.xs,  idx);
   drawGraph(cvVel, C.green,  cache.vs,  idx);
